@@ -117,6 +117,7 @@ jobs:
         uses: actions/download-artifact@v5
         with:
           path: ./
+          merge-multiple: true
 
       - name: debug
         run: ls -la
