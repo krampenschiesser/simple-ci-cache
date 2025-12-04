@@ -4,30 +4,12 @@ use smol_str::SmolStr;
 use std::{
     collections::BTreeMap,
     env, fs,
-    ops::Deref,
     path::{Path, PathBuf},
     vec::Vec,
 };
 use tracing::{debug, info, trace};
 
 use crate::env_config::EnvConfig;
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ProjectId(pub SmolStr);
-
-impl Deref for ProjectId {
-    type Target = SmolStr;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl AsRef<str> for ProjectId {
-    fn as_ref(&self) -> &str {
-        self.0.as_str()
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Project {
@@ -38,9 +20,9 @@ pub struct Project {
     pub inputs: Vec<SmolStr>,
     #[serde(default)]
     pub outputs: Vec<SmolStr>,
-    pub name: ProjectId,
+    pub name: SmolStr,
     #[serde(default)]
-    pub depends_on: Vec<ProjectId>,
+    pub depends_on: Vec<SmolStr>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -113,7 +95,7 @@ impl Config {
         Ok(result)
     }
 
-    pub fn get_project(&self, id: &ProjectId) -> Option<&Project> {
+    pub fn get_project(&self, id: &str) -> Option<&Project> {
         self.projects.iter().find(|p| &p.name == id)
     }
 
@@ -135,5 +117,29 @@ impl Config {
             }
         }
         return Ok(None);
+    }
+
+    pub fn get_all_depenend_file_globs(&self, project: &Project) -> anyhow::Result<Vec<SmolStr>> {
+        let mut projects = Vec::new();
+        let mut inputs = Vec::new();
+        projects.push(project);
+        while let Some(current_project) = projects.pop() {
+            // add depenent projects
+            current_project
+                .depends_on
+                .iter()
+                .filter_map(|id| self.get_project(id))
+                .for_each(|p| {
+                    debug!("Found dependency {}", current_project.name.as_str());
+                    projects.push(p);
+                });
+            debug!(
+                "Adding {} inputs from project {}",
+                inputs.len(),
+                current_project.name.as_str()
+            );
+            inputs.extend(current_project.inputs.clone());
+        }
+        Ok(inputs)
     }
 }

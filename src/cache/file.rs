@@ -32,7 +32,7 @@ pub struct StoredCacheFile {
     pub created: DateTime<Utc>,
     pub original_hash: SmolStr,
     pub compression: Compression,
-    pub original_path: PathBuf,
+    pub original_path: SmolStr,
 }
 
 #[derive(Debug, Clone)]
@@ -106,7 +106,11 @@ impl CachedFile {
         }
     }
 
-    pub async fn create(cache_dir: PathBuf, original_path: PathBuf) -> anyhow::Result<Hash> {
+    pub async fn create(
+        cache_dir: PathBuf,
+        original_path: PathBuf,
+        workspace_path: PathBuf,
+    ) -> anyhow::Result<Hash> {
         let (hash, size) = Self::hash_path(&original_path)?;
         let cache_dir = Self::to_file_cache_dir(&cache_dir);
         let file_dir = cache_dir.join(hash.to_string());
@@ -141,11 +145,16 @@ impl CachedFile {
                 copy(&mut encoder, &mut target).await?;
             }
         }
+        let relative_path = if original_path.starts_with(&workspace_path) {
+            original_path.strip_prefix(&workspace_path)?
+        } else {
+            &original_path
+        };
         let data = StoredCacheFile {
             compression,
             created: Utc::now(),
             original_hash: hash.to_smolstr(),
-            original_path: original_path,
+            original_path: relative_path.to_string_lossy().to_smolstr(),
         };
         let mut data_file = File::create_new(file_dir.join(DATA_FILE_NAME)).await?;
 
@@ -179,7 +188,7 @@ impl CachedFile {
         })
     }
 
-    pub async fn restore(self) -> anyhow::Result<()> {
+    pub async fn restore(self) -> anyhow::Result<SmolStr> {
         let read_file = File::open(&self.path).await?;
         let mut buf_read = BufReader::new(read_file);
         let mut write_file = File::open(&self.data.original_path).await?;
@@ -207,7 +216,7 @@ impl CachedFile {
             }
         };
 
-        Ok(())
+        Ok(self.data.original_path)
     }
 
     pub async fn restore_to_stdout(self) -> anyhow::Result<()> {
