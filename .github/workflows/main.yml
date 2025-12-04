@@ -1,0 +1,26 @@
+name: Cargo Build & Test
+
+on:
+  push:
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    name: release dev version
+    strategy:
+      matrix:
+        runner:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: install rust
+        run: rustup update stable
+      - name: Build
+        run: cargo build --release

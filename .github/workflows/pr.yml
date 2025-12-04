@@ -1,0 +1,23 @@
+name: Cargo Build & Test
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    name: release dev version
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: install rust
+        run: rustup update stable
+      - name: Build
+        run: cargo build --verbose
+      - name: Test
+        run: cargo test --verbose

@@ -1,0 +1,21 @@
+ttl: 7
+exec: BASH
+cache_dir: .cacheSimple
+
+projects:
+  - name: lib
+    root: ./lib
+    inputs:
+      - lib/**
+    outputs:
+      - lib/**
+  - name: main
+    root: ./main
+    inputs:
+      - main/**
+    outputs:
+      - main/dist/**/*
+    depends_on:
+      - lib
+    envs:
+      - ENVIRONMENT
