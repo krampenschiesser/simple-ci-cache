@@ -41,7 +41,7 @@ jobs:
         run: cargo build --release
       - uses: actions/upload-artifact@v4
         with:
-          name: mac-release
+          name: window-release
           path: |
             target/release/simple-ci-cache.exe
 
@@ -65,7 +65,6 @@ jobs:
 
   build-linux-aarch64:
     name: linux build for arm
-    # runs-on: ubuntu-24.04-arm
     runs-on: ubuntu-latest
     steps:
       - name: checkout
@@ -128,5 +127,5 @@ jobs:
             target/release/simple-ci-cache.exe
             target/release/simple-ci-cache-mac
             target/release/simple-ci-cache-linux-x86-64
-            target/release/simple-ci-cache-linux-aarch6
+            target/release/simple-ci-cache-linux-aarch64
           prerelease: true
