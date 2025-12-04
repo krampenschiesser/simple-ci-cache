@@ -1,5 +1,4 @@
 use std::{
-    fs,
     num::NonZeroU32,
     path::{Path, PathBuf},
     time::SystemTime,
@@ -17,7 +16,6 @@ use tokio::{
     io::{AsyncWriteExt, BufReader, copy, copy_buf, stdout},
 };
 use tracing::{debug, trace};
-use tracing_subscriber::fmt::format;
 
 use crate::{cache::folder::FILE_FOLDER_NAME, error::CacheError};
 
