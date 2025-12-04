@@ -12,15 +12,35 @@ jobs:
     name: release dev version
     strategy:
       matrix:
-        runner:
-          - ubuntu-latest
-          - windows-latest
-          - macos-latest
-    runs-on: ${{ matrix.runner }}
+        os:
+          - ubuntu
+          - windows
+          - macos
+    runs-on: ${{ matrix.os }}-latest
     steps:
       - name: checkout
         uses: actions/checkout@v4
       - name: install rust
         run: rustup update stable
+      - name: Test
+        run: cargo test
       - name: Build
         run: cargo build --release
+
+      - name: Release windows
+        if: matrix.os == 'windows'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ matrix.os }}-${{github.sha}}
+          body: |
+            Dev version release of windows. compiled with avx and sse4.
+          files: target/release/simple-ci-cache.exe
+
+      - name: Release others
+        if: matrix.os != 'windows'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ matrix.os }}-${{github.sha}}
+          body: |
+            Dev version release of ${{ matrix.os }}. compiled with avx and sse4.
+          files: target/release/simple-ci-cache
