@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  pull_request:
 env:
   CARGO_TERM_COLOR: always
 
@@ -129,6 +130,10 @@ jobs:
 
       - id: date
         run: echo date=$(date +"%Y-%m-%dT%H:%M:%S%z") >> "$GITHUB_OUTPUT"
+
+      - name: delete old release
+        run: |
+          gh release delete ${{steps.version.outputs.version}} --cleanup-tag -y
 
       - name: Release
         uses: softprops/action-gh-release@v2
