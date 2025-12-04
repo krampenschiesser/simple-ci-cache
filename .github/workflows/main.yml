@@ -113,16 +113,21 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v5
 
+      - name: Release version
+        id: version
+        run: |
+          version=$(cargo pkgid | sed -e "s/.*\@//");
+          echo "version=${version}-dev" >> "$GITHUB_OUTPUT"
+
       - id: date
         run: echo date=$(date +"%Y-%m-%dT%H:%M:%S%z") >> "$GITHUB_OUTPUT"
 
       - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          name: ${{steps.date.outputs.date}}
-          tag_name: ${{steps.date.outputs.date}}
+          tag_name: ${{steps.version.outputs.version}}
           body: |
-            Dev version release ${{steps.date.outputs.date}}
+            Dev version release ${{steps.version.outputs.version}} ${{steps.date.outputs.date}}
           files: |
             target/release/simple-ci-cache.exe
             target/release/simple-ci-cache-mac
