@@ -43,6 +43,7 @@ jobs:
           body: |
             Dev version release of windows. compiled with avx and sse4.
           files: target/release/simple-ci-cache.exe
+          prerelease: true
       - name: Release mac
         if: matrix.os == 'macos'
         uses: softprops/action-gh-release@v2
@@ -52,6 +53,7 @@ jobs:
           body: |
             Dev version release of macos. compiled with avx and sse4.
           files: target/release/simple-ci-cache
+          prerelease: true
 
       - name: Release linux x86-64
         if: matrix.os == 'ubuntu'
@@ -62,3 +64,4 @@ jobs:
           body: |
             Dev version release of linux. compiled with avx and sse4.
           files: target/release/simple-ci-cache
+          prerelease: true
