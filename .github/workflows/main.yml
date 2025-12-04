@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  pull_request:
 env:
   CARGO_TERM_COLOR: always
 
@@ -14,8 +15,8 @@ concurrency:
   group: release-main
   cancel-in-progress: true
 jobs:
-  release:
-    name: release dev version
+  test:
+    name: test before release
     strategy:
       fail-fast: false
       matrix:
@@ -27,41 +28,104 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
-      - name: install rust
-        run: rustup update stable
       - name: Test
         run: cargo test
+
+  build-windows:
+    name: Windows build
+    runs-on: windows-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Build
+        run: cargo build --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-release
+          path: |
+            target/release/simple-ci-cache.exe
+
+  build-macos:
+    name: Macos build
+    runs-on: macos-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
       - name: Build
         run: cargo build --release
 
-      - name: Release windows
-        if: matrix.os == 'windows'
-        uses: softprops/action-gh-release@v2
-        with:
-          name: ${{ matrix.os }}-${{github.sha}}
-          tag_name: ${{ matrix.os }}-${{github.sha}}
-          body: |
-            Dev version release of windows. compiled with avx and sse4.
-          files: target/release/simple-ci-cache.exe
-          prerelease: true
-      - name: Release mac
-        if: matrix.os == 'macos'
-        uses: softprops/action-gh-release@v2
-        with:
-          name: ${{ matrix.os }}-${{github.sha}}
-          tag_name: ${{ matrix.os }}-${{github.sha}}
-          body: |
-            Dev version release of macos. compiled with avx and sse4.
-          files: target/release/simple-ci-cache
-          prerelease: true
+      - name: Rename
+        run: mv target/release/simple-ci-cache target/release/simple-ci-cache-mac
 
-      - name: Release linux x86-64
-        if: matrix.os == 'ubuntu'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-release
+          path: |
+            target/release/simple-ci-cache-mac
+
+  build-linux-aarch64:
+    name: linux build for arm
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Install cross
+        run: cargo install cross
+      - name: Build aarch64-musl
+        run: |
+          export CARGO_TARGET_AARCH64_UNKNOWN_LINX_MUSL_RUSTFLAGS='-Ctarget-feature=+neon'
+          cross build --target aarch64-unknown-linux-musl --release
+      - name: rename
+        run: mkdir -p target/release; mv target/aarch64-unknown-linux-musl/release/simple-ci-cache target/release/simple-ci-cache-linux-aarch64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-release-aarch64
+          path: |
+            target/release/simple-ci-cache-linux-aarch64
+
+  build-linux-x86:
+    name: linux build
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v4
+      - name: Install cross
+        run: cargo install cross
+      - name: Build x86-64-musl
+        run: |
+          export CARGO_TARGET_X86_64_UNKNOWN_LINX_MUSL_RUSTFLAGS='-Ctarget-feature=+avx2,+sse41'
+          cross build --target x86_64-unknown-linux-musl --release
+      - name: rename
+        run: mkdir -p target/release; mv target/x86_64-unknown-linux-musl/release/simple-ci-cache target/release/simple-ci-cache-linux-x86-64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-release-x86-64
+          path: |
+            target/release/simple-ci-cache-linux-x86-64
+
+  release:
+    name: release dev version
+    needs:
+      [test, build-linux-x86, build-linux-aarch64, build-macos, build-windows]
+
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v5
+
+      - id: date
+        run: echo date=$(date +"%Y-%m-%dT%H:%M:%S%z") >> "$GITHUB_OUTPUT"
+
+      - name: Release
         uses: softprops/action-gh-release@v2
         with:
-          name: linux-${{github.sha}}
-          tag_name: linux-${{github.sha}}
+          name: ${{steps.date.outputs.date}}
+          tag_name: ${{steps.date.outputs.date}}
           body: |
-            Dev version release of linux. compiled with avx and sse4.
-          files: target/release/simple-ci-cache
+            Dev version release ${{steps.date.outputs.date}}
+          files: |
+            target/release/simple-ci-cache.exe
+            target/release/simple-ci-cache-mac
+            target/release/simple-ci-cache-linux-x86-64
+            target/release/simple-ci-cache-linux-aarch6
           prerelease: true
