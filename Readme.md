@@ -42,24 +42,27 @@ And of course, a config change will invalidate the whole cache.
 
 The .cache folder contains the (maybe) compressed files and cached commands linking to those files.
 
+```
 .cache/
 .cache/files/asd12xxx
 .cache/files/asd12xxx/file.json
 .cache/files/asd12xxx/compressed
 .cache/commands
 .cache/commands/sdf895a/command.json
+```
 
 ## file.json
-
+```json
 {
     created: DateTime
     original_hash: HashSum
     compression_algorithm: brotli,none,zlib
     original_path: String
 }
+```
 
 ## command.json
-
+```json
 {
     ran: DateTime,
     env: Map,
@@ -68,6 +71,7 @@ The .cache folder contains the (maybe) compressed files and cached commands link
     outputs: Hash[]
     inputs: Hash[]
 }
+```
 
 # how to use in CI envs
 
