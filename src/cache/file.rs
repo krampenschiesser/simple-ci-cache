@@ -1,7 +1,5 @@
 use std::{
-    fs::{self, OpenOptions},
     num::NonZeroU32,
-    os::unix::fs::MetadataExt,
     path::{Path, PathBuf},
     time::SystemTime,
 };
@@ -15,7 +13,7 @@ use serde::{Deserialize, Serialize};
 use smol_str::{SmolStr, ToSmolStr};
 use tokio::{
     fs::{File, create_dir_all},
-    io::{AsyncRead, AsyncReadExt, AsyncWriteExt, BufReader, copy, copy_buf, stdout},
+    io::{AsyncWriteExt, BufReader, copy, copy_buf, stdout},
 };
 use tracing::{debug, trace};
 
