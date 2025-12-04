@@ -4,7 +4,6 @@ use std::{
 };
 
 use anyhow::bail;
-use tracing::error;
 
 use crate::cache::{
     command::{COMMAND_DIR, COMMAND_FILE_NAME, CachedCommand},

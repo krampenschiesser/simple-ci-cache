@@ -1,6 +1,6 @@
 use anyhow::Ok;
 use blake3::Hash;
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::{DateTime, Utc};
 
 use rayon::slice::ParallelSliceMut;
 use serde::{Deserialize, Serialize};
@@ -12,7 +12,6 @@ use std::{
     path::{Path, PathBuf},
     time::SystemTime,
 };
-use tokio::io::AsyncWrite;
 use tracing::debug;
 
 pub const COMMAND_DIR: &'static str = "commands";
@@ -30,11 +29,12 @@ pub struct CachedCommand {
 }
 
 impl CachedCommand {
-    pub fn is_outdated(&self, today: NaiveDate, ttl: chrono::Duration) -> bool {
-        false
-    }
+    // cache cleanup comes later
+    // pub fn is_outdated(&self, today: NaiveDate, ttl: chrono::Duration) -> bool {
+    //     false
+    // }
 
-    pub async fn cleanup(self) {}
+    // pub async fn cleanup(self) {}
 
     pub fn create_hash(commandline: &str, mut files: Vec<PathBuf>) -> anyhow::Result<Hash> {
         files.par_sort_by_key(|e| e.canonicalize().expect("full path")); //fixme

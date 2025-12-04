@@ -1,7 +1,7 @@
-use std::{collections::BTreeMap, env, path::PathBuf};
+use std::{collections::BTreeMap, env};
 
 use smol_str::{SmolStr, ToSmolStr};
-use tracing::{debug, warn};
+use tracing::debug;
 
 #[derive(Debug, Clone)]
 pub struct EnvConfig {

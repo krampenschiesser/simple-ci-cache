@@ -10,6 +10,9 @@ env:
 permissions:
   contents: write
 
+concurrency:
+  group: release-main
+  cancel-in-progress: true
 jobs:
   release:
     name: release dev version
@@ -36,7 +39,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ matrix.os }}-${{github.sha}}
-          tag_name: ${{github.sha}}
+          tag_name: ${{ matrix.os }}-${{github.sha}}
           body: |
             Dev version release of windows. compiled with avx and sse4.
           files: target/release/simple-ci-cache.exe
@@ -45,7 +48,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: ${{ matrix.os }}-${{github.sha}}
-          tag_name: ${{github.sha}}
+          tag_name: ${{ matrix.os }}-${{github.sha}}
           body: |
             Dev version release of macos. compiled with avx and sse4.
           files: target/release/simple-ci-cache
@@ -55,7 +58,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           name: linux-${{github.sha}}
-          tag_name: ${{github.sha}}
+          tag_name: linux-${{github.sha}}
           body: |
-            Dev version release of $linux. compiled with avx and sse4.
+            Dev version release of linux. compiled with avx and sse4.
           files: target/release/simple-ci-cache

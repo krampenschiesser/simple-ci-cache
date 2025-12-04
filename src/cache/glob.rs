@@ -20,7 +20,7 @@ pub fn get_paths_from_globs(glob_strings: &[SmolStr], root_dir: &Path) -> Vec<Pa
             let result = glob(&full_pattern);
             match result {
                 Err(e) => {
-                    error!("Could not parse glob pattern {}", pattern);
+                    error!("Could not parse glob pattern {}: {}", pattern, e);
                     None
                 }
                 Ok(paths) => Some(paths),

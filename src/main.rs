@@ -1,6 +1,6 @@
 use std::{
     collections::BTreeMap,
-    env::{self, current_dir},
+    env::{self},
     fs,
     path::PathBuf,
     process::Stdio,
