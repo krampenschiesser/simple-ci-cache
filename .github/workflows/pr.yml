@@ -6,15 +6,32 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+concurrency:
+  group: pr-${{ github.head_ref}}
+  cancel-in-progress: true
 jobs:
   pr-build:
     name: build and test pr
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os:
+          - ubuntu
+          - windows
+          - macos
+    runs-on: ${{ matrix.os }}-latest
     steps:
       - name: checkout
         uses: actions/checkout@v4
-      - name: install rust
-        run: rustup update stable
+
+      - name: Cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - name: Build
         run: cargo build --verbose
       - name: Test
