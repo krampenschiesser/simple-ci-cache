@@ -1,9 +1,9 @@
-name: Cargo Build & Test
+name: Build release
 
 on:
   push:
-  pull_request:
-
+    branches:
+      - main
 env:
   CARGO_TERM_COLOR: always
 
