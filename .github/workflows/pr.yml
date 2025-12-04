@@ -6,6 +6,9 @@ on:
 env:
   CARGO_TERM_COLOR: always
 
+concurrency:
+  group: pr-${{ github.head_ref}}
+  cancel-in-progress: true
 jobs:
   pr-build:
     name: build and test pr

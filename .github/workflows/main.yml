@@ -134,6 +134,8 @@ jobs:
       - name: delete old release
         run: |
           gh release delete ${{steps.version.outputs.version}} --cleanup-tag -y
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Release
         uses: softprops/action-gh-release@v2
