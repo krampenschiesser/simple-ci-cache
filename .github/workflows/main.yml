@@ -125,7 +125,7 @@ jobs:
       - name: Release version
         id: version
         run: |
-          version=$(cargo pkgid | sed -e "s/.*\@//");
+          version=$(cargo pkgid | sed -e "s/.*\@//" | sed -e "s/.*\#//");
           echo "version=${version}-dev" >> "$GITHUB_OUTPUT"
 
       - id: date
