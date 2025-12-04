@@ -9,7 +9,6 @@ use std::{
     vec::Vec,
 };
 use tracing::{debug, info, trace};
-use tracing_subscriber::field::debug;
 
 use crate::env_config::EnvConfig;
 
@@ -146,7 +145,7 @@ impl Config {
 ///
 /// # Examples
 /// ```
-/// use fsaascache::config::types::is_contained;
+/// use simple_ci_cache::config::types::is_contained;
 /// use std::path::Path;
 /// let parent = Path::new("/home/user");
 /// let child = Path::new("/home/user/documents/report.txt");
