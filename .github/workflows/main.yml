@@ -137,12 +137,12 @@ jobs:
           export CARGO_TARGET_X86_64_UNKNOWN_LINX_MUSL_RUSTFLAGS='-Ctarget-feature=+avx2,+sse41'
           cross build --target x86_64-unknown-linux-musl --release
       - name: rename
-        run: mkdir -p target/release; mv target/x86_64-unknown-linux-musl/release/simple-ci-cache target/release/simple-ci-cache-linux-x86-64
+        run: mkdir -p target/release; mv target/x86_64-unknown-linux-musl/release/simple-ci-cache target/release/simple-ci-cache-linux-x86_64
       - uses: actions/upload-artifact@v4
         with:
           name: linux-release-x86-64
           path: |
-            target/release/simple-ci-cache-linux-x86-64
+            target/release/simple-ci-cache-linux-x86_64
 
   release:
     name: release dev version
@@ -184,6 +184,6 @@ jobs:
           files: |
             simple-ci-cache.exe
             simple-ci-cache-mac
-            simple-ci-cache-linux-x86-64
+            simple-ci-cache-linux-x86_64
             simple-ci-cache-linux-aarch64
           prerelease: true
