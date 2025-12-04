@@ -36,11 +36,20 @@ impl CachedCommand {
 
     // pub async fn cleanup(self) {}
 
-    pub fn create_hash(commandline: &str, mut files: Vec<PathBuf>) -> anyhow::Result<Hash> {
+    pub fn create_hash(
+        commandline: &str,
+        mut files: Vec<PathBuf>,
+        filtered_env: &BTreeMap<String, String>,
+    ) -> anyhow::Result<Hash> {
         files.par_sort_by_key(|e| e.canonicalize().expect("full path")); //fixme
 
         let mut hasher = blake3::Hasher::new();
         hasher.update(commandline.as_ref());
+
+        for (k, v) in filtered_env {
+            hasher.update(k.as_bytes());
+            hasher.update(v.as_bytes());
+        }
 
         let amount = files.len();
         let start = SystemTime::now();
