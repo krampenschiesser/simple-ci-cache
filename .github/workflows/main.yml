@@ -112,8 +112,11 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v4
+
       - name: Download artifacts
         uses: actions/download-artifact@v5
+        with:
+          path: ./
 
       - name: debug
         run: ls -la
