@@ -110,6 +110,8 @@ jobs:
 
     runs-on: ubuntu-latest
     steps:
+      - name: checkout
+        uses: actions/checkout@v4
       - name: Download artifacts
         uses: actions/download-artifact@v5
 
@@ -132,8 +134,8 @@ jobs:
           body: |
             Dev version release ${{steps.version.outputs.version}} ${{steps.date.outputs.date}}
           files: |
-            target/release/simple-ci-cache.exe
-            target/release/simple-ci-cache-mac
-            target/release/simple-ci-cache-linux-x86-64
-            target/release/simple-ci-cache-linux-aarch64
+            simple-ci-cache.exe
+            simple-ci-cache-mac
+            simple-ci-cache-linux-x86-64
+            simple-ci-cache-linux-aarch64
           prerelease: true
