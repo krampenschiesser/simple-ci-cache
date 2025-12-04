@@ -1,10 +1,11 @@
 use std::{
+    fs,
     num::NonZeroU32,
     path::{Path, PathBuf},
     time::SystemTime,
 };
 
-use anyhow::{Ok, bail};
+use anyhow::{Context, Ok, bail};
 use async_compression::tokio::bufread::{BrotliDecoder, BrotliEncoder, XzDecoder, XzEncoder};
 use blake3::Hash;
 use chrono::{DateTime, Utc};
@@ -16,6 +17,7 @@ use tokio::{
     io::{AsyncWriteExt, BufReader, copy, copy_buf, stdout},
 };
 use tracing::{debug, trace};
+use tracing_subscriber::fmt::format;
 
 use crate::{cache::folder::FILE_FOLDER_NAME, error::CacheError};
 
@@ -189,9 +191,33 @@ impl CachedFile {
     }
 
     pub async fn restore(self) -> anyhow::Result<SmolStr> {
-        let read_file = File::open(&self.path).await?;
+        let read_file = File::open(&self.path)
+            .await
+            .with_context(|| format!("failed to open cached file binary {:?}", &self.path))?;
         let mut buf_read = BufReader::new(read_file);
-        let mut write_file = File::open(&self.data.original_path).await?;
+        if let Some(parent) = PathBuf::from(self.data.original_path.as_str()).parent() {
+            if !parent.exists() {
+                debug!(
+                    "Creating parent folder structure to restore file {:?}",
+                    parent
+                );
+                let res = create_dir_all(parent).await;
+                if let Err(e) = res {
+                    trace!(
+                        "Multiple threads tried to create parent folder structure, ignore. {}",
+                        e
+                    )
+                }
+            }
+        }
+        let mut write_file = File::create(&self.data.original_path)
+            .await
+            .with_context(|| {
+                format!(
+                    "creating output file for cached file failed: {}",
+                    self.data.original_path
+                )
+            })?;
 
         match &self.data.compression {
             Compression::Brotli => {
