@@ -137,31 +137,3 @@ impl Config {
         return Ok(None);
     }
 }
-
-/// Checks if `child` is contained within `parent`.
-///
-/// This function normalizes both paths using canonicalization and then checks
-/// if the child path starts with the parent path.
-///
-/// # Examples
-/// ```
-/// use simple_ci_cache::config::types::is_contained;
-/// use std::path::Path;
-/// let parent = Path::new("/home/user");
-/// let child = Path::new("/home/user/documents/report.txt");
-/// assert!(is_contained(parent, child));
-///
-/// let parent = Path::new("/home");
-/// let child = Path::new("/home/user");
-/// assert!(is_contained(parent, child));
-/// ```
-pub fn is_contained(parent: &Path, child: &Path) -> bool {
-    // Normalize paths by resolving "..", ".", etc.
-    let normalized_parent = parent
-        .canonicalize()
-        .unwrap_or_else(|_| parent.to_path_buf());
-    let normalized_child = child.canonicalize().unwrap_or_else(|_| child.to_path_buf());
-
-    // Check if child is a prefix of parent
-    normalized_child.starts_with(normalized_parent)
-}
