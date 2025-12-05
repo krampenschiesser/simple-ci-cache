@@ -66,12 +66,16 @@ async fn initialize(cli: &CommandLineArgs) -> anyhow::Result<(Config, PathBuf, P
     Ok((config, root_path, cache_folder_path))
 }
 async fn handle_existing_command(
-    hash: Hash,
+    command_hash: Hash,
     command_string: &str,
     cache_folder: CacheFolder,
 ) -> anyhow::Result<()> {
-    let command = cache_folder.get_cashed_command(&hash)?;
-    info!("Cache hit for {}", &command_string);
+    let command = cache_folder.get_cashed_command(&command_hash)?;
+    info!(
+        "Cache hit for {} [{}]",
+        command_hash.to_hex(),
+        &command_string
+    );
 
     let cached_output = cache_folder
         .get_cached_file(&Hash::from_hex(command.log.as_bytes())?)
@@ -115,6 +119,11 @@ async fn handle_new_command(
     root_folder: PathBuf,
     filtered_env: BTreeMap<String, String>,
 ) -> anyhow::Result<()> {
+    info!(
+        "Cash miss for {} [{}]",
+        command_hash.to_hex(),
+        command_string
+    );
     let temp_file_path = std::env::temp_dir().join(format!("{}.txt", command_hash.to_string()));
 
     let shell_command = config.exec.as_ref();
