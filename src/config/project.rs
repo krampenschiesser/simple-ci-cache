@@ -1,4 +1,4 @@
-use anyhow::{Context, bail};
+use anyhow::bail;
 use blake3::Hash;
 use itertools::Itertools;
 use nonempty::NonEmpty;
@@ -9,10 +9,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tokio::{
-    sync::Semaphore,
-    task::{self, JoinSet},
-};
+use tokio::{sync::Semaphore, task::JoinSet};
 use tracing::debug;
 
 use crate::cache::{
