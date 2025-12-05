@@ -39,7 +39,7 @@ pub fn get_paths_from_globs(glob_strings: &[SmolStr], root_dir: &Path) -> Vec<Pa
             }
         })
         .filter(|p| p.is_file())
-        .dedup()
+        .unique()
         .collect();
     paths
 }

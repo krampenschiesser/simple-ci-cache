@@ -9,7 +9,10 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
-use tokio::{sync::Semaphore, task::JoinSet};
+use tokio::{
+    sync::Semaphore,
+    task::{self, JoinSet},
+};
 use tracing::debug;
 
 use crate::cache::{
@@ -40,16 +43,27 @@ impl Project {
             .unique()
             .collect::<Vec<PathBuf>>();
 
-        let mut output_path_map: HashMap<Hash, (NonEmpty<PathBuf>, u64)> = HashMap::new();
-
+        let mut futures = JoinSet::<anyhow::Result<(PathBuf, Hash, u64)>>::new();
         for path in paths {
-            let (hash, size) = CachedFile::hash_path(&path)
-                .with_context(|| format!("Could not hash file {:?}", &path))?;
-
-            output_path_map
-                .entry(hash)
-                .and_modify(|e| e.0.push(path.clone()))
-                .or_insert((NonEmpty::new(path.clone()), size));
+            futures.spawn_blocking(move || {
+                let (hash, size) = CachedFile::hash_path(&path)?;
+                Ok((path, hash, size))
+            });
+        }
+        let mut output_path_map: HashMap<Hash, (NonEmpty<PathBuf>, u64)> = HashMap::new();
+        while let Some(res) = futures.join_next().await {
+            match res {
+                Err(e) => bail!(e),
+                Ok(hash) => match hash {
+                    Err(e) => bail!(e),
+                    Ok((path, hash, size)) => {
+                        output_path_map
+                            .entry(hash)
+                            .and_modify(|e| e.0.push(path.clone()))
+                            .or_insert((NonEmpty::new(path.clone()), size));
+                    }
+                },
+            }
         }
         let mut futures = JoinSet::<anyhow::Result<(NonEmpty<PathBuf>, SmolStr)>>::new();
         let semaphore = Arc::new(Semaphore::new(100));

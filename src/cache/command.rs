@@ -7,11 +7,10 @@ use serde::{Deserialize, Serialize};
 use smol_str::SmolStr;
 use std::{
     collections::BTreeMap,
-    fs::{self, File},
-    io::Write,
     path::{Path, PathBuf},
     time::SystemTime,
 };
+use tokio::{fs::File, io::AsyncWriteExt};
 use tracing::debug;
 
 pub const COMMAND_DIR: &'static str = "commands";
@@ -64,12 +63,12 @@ impl CachedCommand {
         Ok(result)
     }
 
-    pub fn store_in_cache(self, cache_dir: &Path) -> anyhow::Result<()> {
+    pub async fn store_in_cache(self, cache_dir: &Path) -> anyhow::Result<()> {
         let json = serde_json::to_string(&self)?;
         let target_folder = cache_dir.join(COMMAND_DIR).join(self.hash.to_string());
-        fs::create_dir_all(&target_folder)?;
-        let mut file = File::create(target_folder.join(COMMAND_FILE_NAME))?;
-        file.write_all(json.as_bytes())?;
+        tokio::fs::create_dir_all(&target_folder).await?;
+        let mut file = File::create(target_folder.join(COMMAND_FILE_NAME)).await?;
+        file.write_all(json.as_bytes()).await?;
         Ok(())
     }
 }
