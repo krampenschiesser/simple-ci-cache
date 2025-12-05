@@ -9,11 +9,12 @@ use async_compression::tokio::bufread::{BrotliDecoder, BrotliEncoder, XzDecoder,
 use blake3::Hash;
 use chrono::{DateTime, Utc};
 use file_type::FileType;
+use nonempty::NonEmpty;
 use serde::{Deserialize, Serialize};
 use smol_str::{SmolStr, ToSmolStr};
 use tokio::{
     fs::{File, create_dir_all},
-    io::{AsyncWriteExt, BufReader, copy, copy_buf, stdout},
+    io::{AsyncWriteExt, BufReader, BufWriter, copy, copy_buf, stdout},
 };
 use tracing::{debug, trace};
 
@@ -32,7 +33,6 @@ pub struct StoredCacheFile {
     pub created: DateTime<Utc>,
     pub original_hash: SmolStr,
     pub compression: Compression,
-    pub original_path: SmolStr,
 }
 
 #[derive(Debug, Clone)]
@@ -44,7 +44,7 @@ pub const COMPRESSED_FILE_NAME: &'static str = "compressed";
 pub const DATA_FILE_NAME: &'static str = "file.json";
 
 impl CachedFile {
-    fn hash_path(path: &Path) -> anyhow::Result<(Hash, u64)> {
+    pub fn hash_path(path: &Path) -> anyhow::Result<(Hash, u64)> {
         let mut hasher = blake3::Hasher::new();
         let start = SystemTime::now();
         // blake 3 does file size check already and uses best way to hash (readfile,mmap,parallel)
@@ -109,9 +109,9 @@ impl CachedFile {
     pub async fn create(
         cache_dir: PathBuf,
         original_path: PathBuf,
-        workspace_path: PathBuf,
+        hash: Hash,
+        size: u64,
     ) -> anyhow::Result<Hash> {
-        let (hash, size) = Self::hash_path(&original_path)?;
         let cache_dir = Self::to_file_cache_dir(&cache_dir);
         let file_dir = cache_dir.join(hash.to_string());
         if file_dir.exists() {
@@ -145,16 +145,10 @@ impl CachedFile {
                 copy(&mut encoder, &mut target).await?;
             }
         }
-        let relative_path = if original_path.starts_with(&workspace_path) {
-            original_path.strip_prefix(&workspace_path)?
-        } else {
-            &original_path
-        };
         let data = StoredCacheFile {
             compression,
             created: Utc::now(),
             original_hash: hash.to_smolstr(),
-            original_path: relative_path.to_string_lossy().to_smolstr(),
         };
         let mut data_file = File::create_new(file_dir.join(DATA_FILE_NAME)).await?;
 
@@ -188,12 +182,8 @@ impl CachedFile {
         })
     }
 
-    pub async fn restore(self) -> anyhow::Result<SmolStr> {
-        let read_file = File::open(&self.path)
-            .await
-            .with_context(|| format!("failed to open cached file binary {:?}", &self.path))?;
-        let mut buf_read = BufReader::new(read_file);
-        if let Some(parent) = PathBuf::from(self.data.original_path.as_str()).parent() {
+    pub async fn create_parent(path: &Path) {
+        if let Some(parent) = path.parent() {
             if !parent.exists() {
                 debug!(
                     "Creating parent folder structure to restore file {:?}",
@@ -208,14 +198,29 @@ impl CachedFile {
                 }
             }
         }
-        let mut write_file = File::create(&self.data.original_path)
+    }
+
+    pub async fn restore(
+        self,
+        destinations: NonEmpty<PathBuf>,
+    ) -> anyhow::Result<NonEmpty<PathBuf>> {
+        let read_file = File::open(&self.path)
             .await
-            .with_context(|| {
-                format!(
-                    "creating output file for cached file failed: {}",
-                    self.data.original_path
-                )
-            })?;
+            .with_context(|| format!("failed to open cached file binary {:?}", &self.path))?;
+
+        for destination in &destinations {
+            Self::create_parent(destination).await;
+        }
+
+        let original_path = destinations.first();
+        let mut buf_read = BufReader::new(read_file);
+
+        let mut write_file = File::create(&original_path).await.with_context(|| {
+            format!(
+                "creating output file for cached file failed: {:?}",
+                original_path
+            )
+        })?;
 
         match &self.data.compression {
             Compression::Brotli => {
@@ -239,8 +244,15 @@ impl CachedFile {
                 copy(&mut decoder, &mut write_file).await?;
             }
         };
+        for dest in destinations.tail() {
+            let source_file = File::open(original_path).await?;
+            let dest_file = File::create(dest).await?;
+            let mut writer = BufWriter::new(dest_file);
+            let mut reader = BufReader::new(source_file);
+            copy_buf(&mut reader, &mut writer).await?;
+        }
 
-        Ok(self.data.original_path)
+        Ok(destinations)
     }
 
     pub async fn restore_to_stdout(self) -> anyhow::Result<()> {

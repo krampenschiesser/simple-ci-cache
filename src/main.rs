@@ -6,26 +6,30 @@ use std::{
     process::Stdio,
 };
 
-use anyhow::{Context, bail};
+use anyhow::{Context, anyhow, bail};
 use blake3::Hash;
 use chrono::Utc;
 use clap::Parser;
+use itertools::Itertools;
+use nonempty::NonEmpty;
 use simple_ci_cache::{
     cache::{
         command::CachedCommand, file::CachedFile, folder::CacheFolder, glob::get_paths_from_globs,
     },
     cli::CommandLineArgs,
-    config::{
-        parse::parse_config_file,
-        types::{Config, Project},
-    },
+    config::{Config, parse::parse_config_file, project::Project},
     env_config::parse_env,
     standard_out::redirect_to_file_and_stdout,
 };
-use smol_str::ToSmolStr;
 use tokio::task::JoinSet;
 use tracing::{debug, info};
-use tracing_subscriber::{filter, fmt, layer::SubscriberExt, reload, util::SubscriberInitExt};
+use tracing_subscriber::{
+    filter,
+    fmt::{self},
+    layer::SubscriberExt,
+    reload,
+    util::SubscriberInitExt,
+};
 
 async fn initialize(cli: &CommandLineArgs) -> anyhow::Result<(Config, PathBuf, PathBuf)> {
     let env_config = parse_env();
@@ -75,10 +79,18 @@ async fn handle_existing_command(
     let stdout_future = cached_output.restore_to_stdout();
 
     let mut set = JoinSet::new();
-    for file_hash_str in command.output_files {
-        let file_hash = Hash::from_hex(file_hash_str.as_bytes())?;
+    for output_file in command.output_files {
+        let file_hash = Hash::from_hex(output_file.hash.as_bytes())?;
         let file = cache_folder.get_cached_file(&file_hash).await?;
-        let restore_future = file.restore();
+        let paths = output_file
+            .paths
+            .into_iter()
+            .map(|s| PathBuf::from(s.as_str()))
+            .collect();
+        let dests =
+            NonEmpty::from_vec(paths).ok_or(anyhow!("need at least one output paths, got 0"))?;
+
+        let restore_future = file.restore(dests);
         set.spawn(restore_future);
     }
     stdout_future.await?;
@@ -88,7 +100,7 @@ async fn handle_existing_command(
             Err(e) => bail!(e),
             Ok(task_result) => match task_result {
                 Err(e) => bail!(e),
-                Ok(file_name) => debug!("Restored file {}", file_name),
+                Ok(file_name) => debug!("Restored files {:?}", file_name),
             },
         }
     }
@@ -123,30 +135,17 @@ async fn handle_new_command(
     }
     child.wait().await?;
 
-    let mut output_hashes = Vec::new();
-    let command_line_output_hash = CachedFile::create(
-        cache_folder.root.clone(),
-        temp_file_path,
-        root_folder.clone(),
-    )
-    .await?;
-    if let Some(project) = project {
-        let paths = get_paths_from_globs(&project.outputs, &root_folder);
-        let mut futures = JoinSet::new();
-        for path in paths.clone() {
-            let future = CachedFile::create(cache_folder.root.clone(), path, root_folder.clone());
-            futures.spawn(future);
-        }
-        while let Some(res) = futures.join_next().await {
-            match res {
-                Err(e) => bail!(e),
-                Ok(hash) => match hash {
-                    Err(e) => bail!(e),
-                    Ok(hash) => output_hashes.push(hash.to_smolstr()),
-                },
-            }
-        }
-    }
+    let (hash, size) = CachedFile::hash_path(&temp_file_path)?;
+    let command_line_output_hash =
+        CachedFile::create(cache_folder.root.clone(), temp_file_path, hash, size).await?;
+
+    let output_files = if let Some(project) = project {
+        project
+            .gather_output_files(&root_folder, &cache_folder)
+            .await?
+    } else {
+        vec![]
+    };
     let cached_command = CachedCommand {
         command_line: command_string.into(),
         created: Utc::now(),
@@ -154,7 +153,7 @@ async fn handle_new_command(
         hash: command_hash.to_string().into(),
         last_accessed: Utc::now(),
         log: command_line_output_hash.to_string().into(),
-        output_files: output_hashes,
+        output_files,
     };
     cached_command.store_in_cache(&cache_folder.root)?;
     Ok(())
@@ -228,7 +227,10 @@ async fn main() -> anyhow::Result<()> {
         vec![]
     };
 
-    let all_paths = get_paths_from_globs(&inputs, &root_path);
+    let all_paths = get_paths_from_globs(&inputs, &root_path)
+        .into_iter()
+        .unique()
+        .collect();
 
     let command_string = cli.command.join(" ");
     if command_string.trim().is_empty() {
