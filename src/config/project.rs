@@ -7,8 +7,9 @@ use smol_str::{SmolStr, ToSmolStr};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
+    sync::Arc,
 };
-use tokio::task::JoinSet;
+use tokio::{sync::Semaphore, task::JoinSet};
 use tracing::debug;
 
 use crate::cache::{
@@ -50,23 +51,21 @@ impl Project {
                 .and_modify(|e| e.0.push(path.clone()))
                 .or_insert((NonEmpty::new(path.clone()), size));
         }
-
         let mut futures = JoinSet::<anyhow::Result<(NonEmpty<PathBuf>, SmolStr)>>::new();
+        let semaphore = Arc::new(Semaphore::new(100));
 
         for (hash, (paths, size)) in output_path_map {
             let hash_string = hash.to_smolstr();
-            let future = CachedFile::create(
-                cache_folder.root.clone(),
-                paths.first().clone(),
-                hash.clone(),
-                size,
-            );
-
+            let future =
+                CachedFile::create(cache_folder.root.clone(), paths.first().clone(), hash, size);
+            let clone = semaphore.clone();
             futures.spawn(async move {
+                let _token = clone.acquire().await?;
                 future.await?;
                 Ok((paths, hash_string))
             });
         }
+
         let mut output_files = Vec::new();
         while let Some(res) = futures.join_next().await {
             match res {
