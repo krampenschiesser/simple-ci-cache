@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use glob::glob;
+use itertools::Itertools;
 use smol_str::SmolStr;
 use tracing::{error, trace};
 
@@ -38,6 +39,7 @@ pub fn get_paths_from_globs(glob_strings: &[SmolStr], root_dir: &Path) -> Vec<Pa
             }
         })
         .filter(|p| p.is_file())
+        .dedup()
         .collect();
     paths
 }

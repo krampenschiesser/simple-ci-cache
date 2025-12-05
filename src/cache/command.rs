@@ -18,6 +18,11 @@ pub const COMMAND_DIR: &'static str = "commands";
 pub const COMMAND_FILE_NAME: &'static str = "command.json";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OutputFile {
+    pub paths: Vec<SmolStr>,
+    pub hash: SmolStr,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CachedCommand {
     pub command_line: SmolStr,
     pub env: BTreeMap<String, String>,
@@ -25,17 +30,10 @@ pub struct CachedCommand {
     pub created: DateTime<Utc>,
     pub last_accessed: DateTime<Utc>,
     pub log: SmolStr,
-    pub output_files: Vec<SmolStr>,
+    pub output_files: Vec<OutputFile>,
 }
 
 impl CachedCommand {
-    // cache cleanup comes later
-    // pub fn is_outdated(&self, today: NaiveDate, ttl: chrono::Duration) -> bool {
-    //     false
-    // }
-
-    // pub async fn cleanup(self) {}
-
     pub fn create_hash(
         commandline: &str,
         mut files: Vec<PathBuf>,

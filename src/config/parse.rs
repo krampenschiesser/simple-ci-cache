@@ -1,6 +1,6 @@
 use std::{fs, path::Path};
 
-use crate::config::types::Config;
+use crate::config::Config;
 use anyhow::Context;
 use smol_str::SmolStr;
 
