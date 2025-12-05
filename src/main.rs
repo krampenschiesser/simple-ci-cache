@@ -164,7 +164,7 @@ async fn handle_new_command(
         log: command_line_output_hash.to_string().into(),
         output_files,
     };
-    cached_command.store_in_cache(&cache_folder.root)?;
+    cached_command.store_in_cache(&cache_folder.root).await?;
     Ok(())
 }
 
